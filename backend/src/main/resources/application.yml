@@ -1,0 +1,20 @@
+server:
+  address: 127.0.0.1
+  port: ${AIF_PORT:17890}
+  error:
+    include-message: never
+spring:
+  application:
+    name: ai-footprint
+  datasource:
+    url: jdbc:sqlite:${AIF_DATABASE:../.local/footprint.db}
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1
+      connection-init-sql: PRAGMA busy_timeout=10000
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+footprint:
+  codex-home: ${AIF_CODEX_HOME:${user.home}/.codex}
+  timezone: ${AIF_TIMEZONE:Asia/Shanghai}
