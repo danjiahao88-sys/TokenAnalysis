@@ -18,17 +18,26 @@ public class SnapshotService {
                            List<SkillInventory.Skill> skills, List<String> rules) {}
     private final FootprintStore store;
     private final CodexCollector collector;
+    private final ClaudeCollector claude;
     private final SkillInventory inventory;
     private final Path home;
+    private final Path claudeHome;
     private final ZoneId zone;
-    public SnapshotService(FootprintStore store, CodexCollector collector, SkillInventory inventory,
-                           @Value("${footprint.codex-home}") String home, @Value("${footprint.timezone}") String timezone) {
+    public SnapshotService(FootprintStore store, CodexCollector collector, SkillInventory inventory, ClaudeCollector claude,
+                           @Value("${footprint.codex-home}") String home, @Value("${footprint.claude-home}") String claudeHome, @Value("${footprint.timezone}") String timezone) {
         this.store = store; this.collector = collector; this.inventory = inventory;
         this.home = Path.of(home); this.zone = ZoneId.of(timezone);
+        this.claude = claude; this.claudeHome = Path.of(claudeHome);
     }
     public synchronized CollectionInfo collect() throws IOException {
-        if (!Files.isDirectory(home)) throw new IOException("Codex data directory is unavailable");
-        CodexCollector.Result result = collector.collect(home);
+        if (!Files.isDirectory(home) && !Files.isDirectory(claudeHome)) throw new IOException("Local data directories are unavailable");
+        for (Usage previous : store.usage()) {
+            Path required = previous.tool().equals("claude-code") ? claudeHome.resolve("projects") : home;
+            if (!Files.isDirectory(required)) throw new IOException("A previously collected directory is unavailable");
+        }
+        CodexCollector.Result codex = collector.collect(home), other = claude.collect(claudeHome);
+        List<Usage> combined = new ArrayList<>(codex.usage()); combined.addAll(other.usage());
+        CodexCollector.Result result = new CodexCollector.Result(combined, codex.files()+other.files(), codex.malformedLines()+other.malformedLines(), codex.unreadableFiles()+other.unreadableFiles(), codex.legacyFiles());
         // Do not replace a complete previous snapshot with a partially unreadable scan.
         if (result.unreadableFiles() > 0) throw new IOException("Some session files could not be read");
         store.replace(result, inventory.scan(home));
@@ -44,24 +53,24 @@ public class SnapshotService {
         List<Usage> events = store.usage();
         Map<String,String> sessionNames = new LinkedHashMap<>(), projectNames = new TreeMap<>();
         events.stream().map(Usage::project).distinct().sorted().forEach(p -> projectNames.put(p, "项目 " + String.format("%02d",projectNames.size()+1)));
-        record Key(String date, String model, String project, String session) {}
+        record Key(String date, String tool, String model, String project, String session) {}
         Map<Key,long[]> buckets = new LinkedHashMap<>();
         for (Usage u : events) {
-            String ref = sessionNames.computeIfAbsent(u.session(), ignored -> "s" + (sessionNames.size()+1));
+            String ref = sessionNames.computeIfAbsent(u.tool()+"|"+u.session(), ignored -> "s" + (sessionNames.size()+1));
             String project = publish ? projectNames.get(u.project()) : u.project();
-            Key key = new Key(u.at().atZone(zone).toLocalDate().toString(), u.model(), project, ref);
+            Key key = new Key(u.at().atZone(zone).toLocalDate().toString(), u.tool(), u.model(), project, ref);
             long[] c = buckets.computeIfAbsent(key, ignored -> new long[4]);
             c[0]+=u.inputTokens(); c[1]+=u.cachedInputTokens(); c[2]+=u.outputTokens(); c[3]+=u.reasoningOutputTokens();
         }
         List<Row> rows = buckets.entrySet().stream().map(e -> {
             Key k=e.getKey(); long[] c=e.getValue();
-            return new Row(k.date,"codex",k.model,k.project,k.session,c[0],c[1],c[2],c[3],c[0]+c[2]);
+            return new Row(k.date,k.tool,k.model,k.project,k.session,c[0],c[1],c[2],c[3],c[0]+c[2]);
         }).toList();
         CollectionInfo info = collection();
         List<Tool> tools = List.of(
-            new Tool("codex","Codex",info.files()>0 ? "connected" : "empty", "读取本机 Codex 会话的计数元数据，包含 sessions 与 archived_sessions。", "https://developers.openai.com/codex/"),
+            new Tool("codex","Codex",events.stream().anyMatch(u -> u.tool().equals("codex")) ? "connected" : "empty", "读取本机 Codex 会话的计数元数据，包含 sessions 与 archived_sessions。", "https://developers.openai.com/codex/"),
             new Tool("trae","Trae","planned","尚未接入使用量数据；不会将安装状态推算为 Token 消耗。","https://www.trae.cn/"),
-            new Tool("claude-code","Claude Code","planned","采集适配器待扩展，当前没有纳入统计。","https://code.claude.com/docs/"));
+            new Tool("claude-code","Claude Code",events.stream().anyMatch(u -> u.tool().equals("claude-code")) ? "connected" : "empty","已支持 projects 下的会话及子代理 JSONL；没有有效用量时显示暂无数据。","https://code.claude.com/docs/"));
         List<SkillInventory.Skill> skills = store.skills();
         if (publish) {
             List<SkillInventory.Skill> sanitized = new ArrayList<>(); int index=0;

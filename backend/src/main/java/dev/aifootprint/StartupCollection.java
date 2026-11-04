@@ -12,7 +12,7 @@ public class StartupCollection implements ApplicationRunner {
     private final SnapshotService service;
     public StartupCollection(SnapshotService service) { this.service=service; }
     @Override public void run(ApplicationArguments args) {
-        try { var c=service.collect(); LOG.info("Codex scan completed: {} files, {} malformed lines",c.files(),c.malformedLines()); }
+        try { var c=service.collect(); LOG.info("Local AI scan completed: {} files, {} malformed lines",c.files(),c.malformedLines()); }
         catch (Exception ex) { LOG.warn("Initial scan unavailable. Previous data retained; use the local sync action to retry."); }
     }
 }

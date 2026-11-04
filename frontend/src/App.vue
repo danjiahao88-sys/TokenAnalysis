@@ -32,6 +32,11 @@ import {
   Zap
 } from '@lucide/vue'
 import DataChart from './components/DataChart.vue'
+import NotebookToolbar from './components/NotebookToolbar.vue'
+import WeeklyReportView from './components/WeeklyReportView.vue'
+import PracticeTimelineView from './components/PracticeTimelineView.vue'
+import ExperimentLabView from './components/ExperimentLabView.vue'
+import { useNotebook } from './useNotebook'
 import {
   fmt,
   groupRows,
@@ -49,6 +54,7 @@ import demoJson from './demo.json'
 
 const demo = snapshotSchema.parse(demoJson)
 const snapshot = ref<Snapshot>(demo)
+const notebook = useNotebook(snapshot)
 const page = ref('overview')
 const days = ref(30)
 const tool = ref('all')
@@ -68,6 +74,9 @@ const navigation = [
   { id: 'models', label: '模型分析', en: 'Models', icon: Layers },
   { id: 'tools', label: '工具箱', en: 'Tools', icon: Terminal },
   { id: 'skills', label: 'Skills 工作台', en: 'Skills', icon: Blocks },
+  { id: 'weekly', label: 'AI 使用周报', en: 'Weekly', icon: CalendarDays },
+  { id: 'practice', label: '实践时间线', en: 'Practice', icon: BookOpen },
+  { id: 'experiments', label: '模型实验室', en: 'Experiments', icon: Cpu },
   { id: 'radar', label: '探索雷达', en: 'Explore', icon: Radio },
   { id: 'data', label: '数据与隐私', en: 'Data', icon: Database }
 ]
@@ -416,7 +425,7 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
           <button @click="navigate('data')">了解数据边界 <ArrowUpRight :size="14" /></button>
         </div>
         <div class="sidebar-footer">
-          <span class="version-dot"></span><span>v0.1.0 · Local first</span
+          <span class="version-dot"></span><span>v0.2.0 · Local first</span
           ><button
             class="icon-button"
             :aria-label="dark ? '切换浅色主题' : '切换深色主题'"
@@ -475,7 +484,9 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
                         ? '连接日常使用的 AI 工具，让分散的足迹汇聚在一起。'
                         : page === 'radar'
                           ? '保持好奇，跟随可靠的来源，发现下一次探索的方向。'
-                          : '了解数据从哪里来、如何统计，以及分享时会包含什么。'
+                          : ['weekly', 'practice', 'experiments'].includes(page)
+                            ? '从日志统计到实践证据，积累属于自己的 AI 探索档案。'
+                            : '了解数据从哪里来、如何统计，以及分享时会包含什么。'
               }}
             </p>
           </div>
@@ -498,7 +509,7 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
               isDemo
                 ? '所有用量均为虚构示例，切换本机数据可查看真实足迹。'
                 : isLocal
-                  ? '仅统计本机可读取的 Codex 日志；其他工具尚未接入。'
+                  ? '统计可读取的 Codex / Claude Code 日志；无日志的工具不计入用量。'
                   : '快照在浏览器内读取，没有上传服务器。'
             }}</span>
           </div>
@@ -815,9 +826,11 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
           <div class="info-pair">
             <article class="panel info-card">
               <Layers :size="22" />
-              <h3>模型实验室 · 下一步</h3>
-              <p>后续支持记录同一任务的耗时、用量、验证结果与人工评价，让模型选择有据可依。</p>
-              <span class="outline-badge">规划中</span>
+              <h3>模型实验室</h3>
+              <p>记录同一任务的耗时、用量、验证结果与人工评价，让模型选择有据可依。</p>
+              <button class="text-button" @click="navigate('experiments')">
+                开始对比实验 <ArrowRight :size="14" />
+              </button>
             </article>
             <article class="panel info-card">
               <BookOpen :size="22" />
@@ -832,6 +845,27 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
           </div>
         </template>
 
+        <template v-else-if="['weekly', 'practice', 'experiments'].includes(page)">
+          <NotebookToolbar :key="notebook.scope.value" :notebook="notebook" />
+          <WeeklyReportView
+            v-if="page === 'weekly'"
+            :key="notebook.scope.value"
+            :snapshot="snapshot"
+            :notebook="notebook"
+          />
+          <PracticeTimelineView
+            v-else-if="page === 'practice'"
+            :key="notebook.scope.value"
+            :timezone="snapshot.timezone"
+            :notebook="notebook"
+          />
+          <ExperimentLabView
+            v-else
+            :key="notebook.scope.value"
+            :timezone="snapshot.timezone"
+            :notebook="notebook"
+          />
+        </template>
         <template v-else-if="page === 'tools'">
           <div class="section-intro">
             <h2>
@@ -893,7 +927,7 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
             <div>
               <h2>一个工作台，多种 AI 工作流</h2>
               <p>
-                采集器与展示层分离，后续可以为 Trae、Claude Code 或 API
+                Codex 与 Claude Code 已提供适配器，后续可以为 Trae 或 API
                 网关扩展适配器，共用同一份快照协议。
               </p>
             </div>
@@ -1052,7 +1086,7 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
                 @click="connectLocal(true)"
               >
                 <RefreshCw :size="16" :class="{ spinning: loading }" />{{
-                  loading ? '正在读取…' : '同步本机 Codex 数据'
+                  loading ? '正在读取…' : '同步本机 AI 数据'
                 }}
               </button>
               <p class="small muted connection-hint">
@@ -1121,7 +1155,7 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
             <div class="method-note">
               <strong>采集边界</strong>
               <p>
-                第一版按需重扫 Codex 日志，并在事务中替换统计结果。response_id
+                按需重扫 Codex / Claude Code 日志，并在事务中替换统计结果。Codex response_id
                 在跨文件范围去重；旧日志使用累计差值，旧格式分叉与部分特殊压缩记录可能存在偏差。发现无效尾行会计数跳过，文件不可读时保留原快照。
               </p>
             </div>

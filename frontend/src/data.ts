@@ -107,7 +107,12 @@ export function shiftDate(value: string, offset: number): string {
 export function lastDate(data: Snapshot): string {
   return (
     data.usage.reduce((latest, r) => (r.date > latest ? r.date : latest), '') ||
-    data.generatedAt.slice(0, 10)
+    new Intl.DateTimeFormat('sv-SE', {
+      timeZone: data.timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date(data.generatedAt))
   )
 }
 export function windowRows(

@@ -17,4 +17,5 @@ spring:
       write-dates-as-timestamps: false
 footprint:
   codex-home: ${AIF_CODEX_HOME:${user.home}/.codex}
+  claude-home: ${AIF_CLAUDE_HOME:${user.home}/.claude}
   timezone: ${AIF_TIMEZONE:Asia/Shanghai}

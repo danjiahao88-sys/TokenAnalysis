@@ -32,6 +32,7 @@ class ApiIntegrationTest {
     @DynamicPropertySource static void properties(DynamicPropertyRegistry r) {
         r.add("spring.datasource.url",()->"jdbc:sqlite:"+root.resolve("test.db"));
         r.add("footprint.codex-home",()->root.resolve("codex").toString());
+        r.add("footprint.claude-home",()->root.resolve("claude").toString());
     }
     @Autowired MockMvc mvc;
     @Test void collectIsIdempotentAndExportIsAnAllowlistedPublicSnapshot() throws Exception {

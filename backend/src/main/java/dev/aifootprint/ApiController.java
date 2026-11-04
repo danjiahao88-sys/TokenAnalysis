@@ -13,7 +13,7 @@ import java.util.Map;
 public class ApiController {
     private final SnapshotService service;
     public ApiController(SnapshotService service) { this.service = service; }
-    @GetMapping("/health") public Map<String,String> health() { return Map.of("status","ok","version","0.1.0"); }
+    @GetMapping("/health") public Map<String,String> health() { return Map.of("status","ok","version","0.2.0"); }
     @GetMapping("/snapshot") public ResponseEntity<SnapshotService.Snapshot> snapshot() {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.snapshot(false));
     }

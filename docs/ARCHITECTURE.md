@@ -2,19 +2,23 @@
 
 ## 范围
 
-第一版是本机单用户工具和静态公开演示的组合。Vue 展示层只依赖 v1 快照；Java 负责日志解析、Skills 清单、SQLite 持久化和脱敏导出。没有云端账户系统、计费服务或自动上传。
+本项目是本机单用户工具和静态公开演示的组合。Vue 用量展示依赖 v1 快照；Java 负责日志解析、Skills 清单、SQLite 持久化和脱敏导出。第二期增加独立的浏览器实践/实验档案与本地规则周报。没有云端账户系统、计费服务或自动上传。
 
 ## 模块
 
 | 模块 | 职责 |
 |---|---|
 | `CodexCollector` | 流式逐行读取会话文件，提取模型与计数，合并新旧格式并去重 |
+| `ClaudeCollector` | 读取 projects JSONL 元数据，包含子代理，缓存归一化及重复 message/request 合并 |
 | `SkillInventory` | 只读取 Skill 前置元数据窗口，不执行 Skill，不扫描历史插件缓存 |
 | `FootprintStore` | SQLite schema、事务替换和读取 |
 | `SnapshotService` | 指定时区按日期/会话/模型/项目聚合，构造公开字段白名单 |
 | `LocalHostFilter` / `ApiController` | 回环地址服务、Host 校验、写操作自定义头与 Origin 校验 |
 | `frontend/src/data.ts` | Zod 契约、日期窗口、独立会话数、分组统计 |
 | `DataChart.vue` | 按需注册 ECharts、ResizeObserver、销毁清理、减少动画偏好 |
+| `notebook.ts` / `notebook-db.ts` / `useNotebook.ts` | 独立 Zod 档案契约、idb 存储、来源隔离、较新版本导入及异步来源切换保护 |
+| `weekly-report.ts` | 周一自然周、快照日期截止、等长环比、关联非归档记录、Markdown 白名单文本输出 |
+| `WeeklyReportView` / `PracticeTimelineView` / `ExperimentLabView` | 第二期独立页面；档案工具栏共用备份导入导出 |
 
 ## API
 
@@ -67,6 +71,26 @@
 - 采集采用重扫而非增量 checkpoint，成本随日志规模增长。
 
 这些限制在 README 和页面上明确说明。新增适配器应先取得真实格式及回归夹具，不能仅凭工具安装或活跃进程估算 Token。
+
+### Claude Code 与迁移
+
+`AIF_CLAUDE_HOME` 默认用户目录下 `.claude`，只扫描 `projects/**/*.jsonl`，不读取认证文件。仅处理 assistant message 的用量、日期、模型、会话和 cwd 末段；不存正文。原 `Usage` 默认工具为 Codex，增加 tool 字段；启动时通过 SQLite table_info 检查旧表，缺少 tool 才追加默认 codex 的非空列，不删表。快照聚合键含工具，sessionRef 映射以工具+原会话身份隔离。
+
+Claude 输入 = `input_tokens + cache_read_input_tokens + cache_creation_input_tokens`；顶层缓存写缺失时才取 `ephemeral_5m_input_tokens + ephemeral_1h_input_tokens`。cachedInputTokens 仅取缓存读；推理用量无独立证据时为零，不额外加总输出。message.id 与 requestId 构成身份，重复或流式累计片段取各项最大值，首次日期归属；缺失模型标 unknown，缺失消息身份或非法计数跳过并计入无效行。没有实现压缩归档格式或所有未来版本，缺 requestId 与带 requestId 的异构副本不能保证合并。
+
+两种工具重扫后在同一事务替换用量。任一文件读取失败，或已有用量的目录消失，不替换此前快照；首次无某工具目录允许为空。工具连接状态以实际有效用量为准。当前 Claude 只有合成夹具证据，本机无真实日志，不能据此宣称所有 Claude 版本已兼容。
+
+## 浏览器档案协议
+
+IndexedDB 名称 `ai-footprint-notebook`，版本 1，entries / experiments 使用 `[scope,id]` 复合主键，metadata 只记录演示 seed。scope 为 demo、local 或 `public:<generatedAt>`；不同来源切换清空当前视图再读取，使用 generation 防止旧异步读覆盖新来源。演示 fixture 只首次初始化；不会重置访问者的演示编辑。
+
+备份 `format: ai-footprint-notebook-v1` 包含 exportedAt、provenance（demo/personal）、entries、experiments；Zod 剥离未知字段，校验日历、长度、HTTPS 链接、实验组身份、整数计数。未知用量、耗时、评分为 null；通过率分母仅为 pass/fail，不含 untested。归档可恢复，不物理删除，归档不进入周报或实验统计。
+
+单空间最多 500 条实践、300 个实验，归档计入；UI 备份导入上限 32 MB。保存及合并在事务内先校验容量，整份备份先验证再写入。相同 ID 只接收 updatedAt 较新版本，按时间戳值比较；演示和个人档案禁止混合。文件读取期间若切换来源，拒绝继续导入。不是多人协作系统，没有跨设备自动同步与冲突日志。
+
+档案保存在当前浏览器当前 origin；清除站点数据会丢失，需手动备份。用量快照只在页面内存，独立档案不进入 `/api/export`。备份与 Markdown 包含用户手工笔记，不自动脱敏，也不自动上传。公开快照重新导入相同 generatedAt 可找回该档案；不同 generatedAt 进入新空间。
+
+周报依据快照统计时区的日期字段，周一至周日，截止快照最新活动日。未完整周只与上周相同天数比较，无基期则不显示百分比。无用量时按 generatedAt 在统计时区的日期选周。实践与实验按各自手工日期关联，只输出统计与手工内容，不调用付费 API，不推断生产力或自动模型评分。
 
 ## 发布边界
 

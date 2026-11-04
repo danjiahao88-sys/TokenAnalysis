@@ -5,7 +5,11 @@ import java.time.Instant;
 
 public record Usage(String id, String session, Instant at, String model, String project,
                     long inputTokens, long cachedInputTokens, long outputTokens, long reasoningOutputTokens,
-                    String evidence) {
+                    String evidence, String tool) {
+    public Usage(String id, String session, Instant at, String model, String project, long inputTokens,
+                 long cachedInputTokens, long outputTokens, long reasoningOutputTokens, String evidence) {
+        this(id, session, at, model, project, inputTokens, cachedInputTokens, outputTokens, reasoningOutputTokens, evidence, "codex");
+    }
     public long totalTokens() { return inputTokens + outputTokens; }
 
     public record Counters(long input, long cached, long output, long reasoning) {

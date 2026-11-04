@@ -1,8 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import { groupRows, parseImport, shiftDate, snapshotSchema, summarize, windowRows } from './data'
+import {
+  groupRows,
+  lastDate,
+  parseImport,
+  shiftDate,
+  snapshotSchema,
+  summarize,
+  windowRows
+} from './data'
 import demo from './demo.json'
 
 describe('snapshot contract and accounting', () => {
+  it('空快照的截止日期仍使用统计时区', () => {
+    const data = snapshotSchema.parse({
+      ...demo,
+      usage: [],
+      generatedAt: '2026-11-03T23:59:00Z',
+      timezone: 'Asia/Shanghai'
+    })
+    expect(lastDate(data)).toBe('2026-11-04')
+  })
   it('validates the public demo and counts cache only once', () => {
     const data = snapshotSchema.parse(demo)
     const stats = summarize(data.usage)
