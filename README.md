@@ -8,6 +8,8 @@
 
 Vue 3 · TypeScript · ECharts · Java 21 · Spring Boot · SQLite
 
+[在线演示](https://danjiahao88-sys.github.io/TokenAnalysis/) · [源码](https://github.com/danjiahao88-sys/TokenAnalysis) · [构建状态](https://github.com/danjiahao88-sys/TokenAnalysis/actions)
+
 </div>
 
 ![AI Footprint 演示仪表盘](docs/images/dashboard.jpg)
@@ -66,6 +68,8 @@ Windows 也可分别运行：
 如果采集目录不存在或文件不可读，会保留此前快照；部分无效 JSONL 行会跳过并显示数量。
 
 ## 部署到 GitHub Pages
+
+当前仓库的在线演示已部署到 [GitHub Pages](https://danjiahao88-sys.github.io/TokenAnalysis/)。Fork 后可按以下步骤发布自己的版本：
 
 1. 将项目上传到自己的 GitHub 仓库，默认分支使用 `main`。
 2. 仓库 **Settings → Pages → Source** 选择 **GitHub Actions**。
