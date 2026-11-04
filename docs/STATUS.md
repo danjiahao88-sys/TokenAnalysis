@@ -1,6 +1,11 @@
 # 当前进度
 
-更新：2026-11-04。第一期已完成并发布。第二期 v0.2.0 已完成本机实现与验收；用户已授权提交与发布，正在核对 GitHub CI 和 Pages 结果。
+更新：2026-11-04。第一期与第二期均已完成并发布；第二期 v0.2.0 的 GitHub CI、Pages 部署与线上浏览器核验通过。
+
+- 第二期功能提交：`323bb37b35473e37bcae1ec98a92ace76cddbb87`，已推送 `main`。
+- 第二期 CI：https://github.com/danjiahao88-sys/TokenAnalysis/actions/runs/41832226899（success）。
+- 第二期 Pages：https://github.com/danjiahao88-sys/TokenAnalysis/actions/runs/41832227009（success）。
+- 线上已确认 `v0.2.0`，周报、实践时间线、模型实验室正常加载，浏览器控制台无脚本错误；默认仍为虚构示例。
 
 ## 第二期
 
@@ -89,3 +94,4 @@
 - **响应流片段**：同一 Claude message/request 后续片段重复累计用量；按各项最大值合并而非逐条累加，复制的子代理日志同样去重。
 - **浏览器对象克隆**：Vue 响应式对象不能直接 structuredClone；编辑先 toRaw，持久化先 Zod 白名单解析，已用真实页面编辑验证。
 - **JAR 重打包权限**：沙箱内测试通过但 repackage 重命名失败；授权后只执行跳过已通过测试的 package 成功，未将打包失败当作测试失败重复测试。
+- **GitHub 推送连接**：Git 直连停滞或超时，而 GitHub API 正常；核对发现系统现有代理未被 Git 使用。仅本次命令显式使用现有代理与 HTTP/1.1 后推送成功，未改全局代理或凭据设置。
