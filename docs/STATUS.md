@@ -1,13 +1,18 @@
 # 当前进度
 
-更新：2026-11-09。当前版本 v0.4.0，已实现网站配对本机采集助手与自动更新，Windows 安装 EXE / 便携 ZIP 已发布并进行隔离验收。用户已授权提交 / 推送 / 发布，源码提交 `0f76352` 已推送，Release 已上线；首次 Pages / 前端 CI 因依赖镜像返回 500 失败，正在修复下载来源，线上仍为第二期 v0.2.0。本机通过不代表线上 HTTPS 浏览器链路或另一台电脑已验收。
+更新：2026-11-09。**v0.4.0 网站与 Windows 助手已发布**。用户授权后，功能提交 `0f76352` 和部署修复 `79ce36c` 已推送；GitHub CI 与 Pages 部署通过。Edge 已在实际 HTTPS 网站完成配对、合成日志自动更新、刷新重连和撤销授权验收。首次仍需安装助手、配对并按浏览器要求授权，不能承诺未安装就扫描电脑或所有系统 / 浏览器均兼容。
+
+- v0.4 CI：[42645148514](https://github.com/danjiahao88-sys/TokenAnalysis/actions/runs/42645148514)（success）。
+- v0.4 Pages：[42645148593](https://github.com/danjiahao88-sys/TokenAnalysis/actions/runs/42645148593)（build / deploy 均 success）。
+- 干净 Windows 构建：[42646856542](https://github.com/danjiahao88-sys/TokenAnalysis/actions/runs/42646856542)（success），后端验证、固定工具下载、原生安装 EXE / 便携 ZIP 打包和构建附件上传均通过；不将构建成功当作该机器已完成图形安装与登录验收。
+- v0.4 Release：[安装 EXE、便携 ZIP 与 SHA256SUMS](https://github.com/danjiahao88-sys/TokenAnalysis/releases/tag/v0.4.0)，三个附件的 GitHub digest 均与本机发布文件一致。
 
 - 第二期功能提交：`323bb37b35473e37bcae1ec98a92ace76cddbb87`，已推送 `main`。
 - 第二期 CI：https://github.com/danjiahao88-sys/TokenAnalysis/actions/runs/41832226899（success）。
 - 第二期 Pages：https://github.com/danjiahao88-sys/TokenAnalysis/actions/runs/41832227009（success）。
-- 线上已确认 `v0.2.0`，周报、实践时间线、模型实验室正常加载，浏览器控制台无脚本错误；默认仍为虚构示例。
+- 第二期历史验收确认 `v0.2.0`，周报、实践时间线、模型实验室正常加载；当前线上已由 v0.4.0 替换，默认仍为虚构示例。
 
-## v0.4：网站连接本机采集助手（助手已发布，网站待验收）
+## v0.4：网站连接本机采集助手（已发布）
 
 - 首次安装 Windows x64 助手并配对，以后访问同一网站自动重连自己的电脑；不需要 Java / Node / Maven 或运行命令。首次设置与浏览器本地网络权限仍必要，不能无授权扫描电脑。网站沿用现有 GitHub Pages 域名，自定义域名须配置精确来源。
 - 独立 `/bridge/`：Spring 标准 CORS 精确来源 / 方法 / 请求头 / PNA 预检；8 位随机码、5 分钟有效、一次使用、每分钟最多 5 次尝试；256 位浏览器令牌按来源绑定，SQLite 只存哈希，网站和本机管理可撤销。旧 `/api/` 不开放跨站读取，所有入口仍仅回环 Host、no-store 和禁 iframe。
@@ -23,15 +28,17 @@
 - 桌面深浅主题与 375px 视口检查；手机实际内容宽度 360px 且无整页横向溢出。新标签页控制台无脚本错误。验收截图 `.local/assistant-e2e-proof.png` 仅合成内容，不纳入公开截图。
 - 最终候选 `0.4.0-rc2` 的便携 ZIP 检查包含 Java、模块 LICENSE / NOTICE / legal，无数据库 / JSONL / 本机配置；打包说明与源码保持一致，EXE / ZIP 的 SHA256SUMS 已复核。前端最终构建通过；合成数据验收助手已停止，避免将测试用量误作真实数据。
 - 安装 EXE 内同一 MSI 在专用目录静默安装 / 卸载均返回 0，安装 JAR 与已验证构建哈希一致。桌面与开始菜单快捷方式正确，自带运行时的安装版在无外部 Java / PowerShell PATH 时可启动；重复启动退出；管理接口开启 / 关闭登录启动成功，生成的用户 Startup 快捷方式目标及 `--aif-silent` 参数正确。卸载后程序与安装快捷方式已移除，测试统计库保留。证据仅在 `.local/assistant-install-e2e-fixed/evidence.json`，不纳入公开产物。
-- 首轮安装验收发现登录启动设置依赖 PATH 中的 PowerShell，修复为使用 Windows 系统目录的内置 PowerShell；修复后 Java 19 项重新通过并重新打包验收。实际 EXE 安装向导、注销后重新登录、HTTPS 线上页面与其他机器仍未验收，不将快捷方式检查当作真实登录事件已通过。
+- 首轮安装验收发现登录启动设置依赖 PATH 中的 PowerShell，修复为使用 Windows 系统目录的内置 PowerShell；修复后 Java 19 项重新通过并重新打包验收。实际 EXE 安装向导、注销后重新登录与其他机器仍未验收，不将快捷方式检查当作真实登录事件已通过。
+- **真实 HTTPS 主流程**：Edge 从线上 v0.4 页面配对独立合成数据助手，先显示 1.2K；追加请求后自动变为 2.4K，没有点击同步。刷新后自动恢复本机来源，撤销后返回虚构演示与配对入口，控制台无脚本错误。本次未出现需操作的本地网络权限弹窗，不代表其他配置无需授权。截图仅保存在 `.local/assistant-https-e2e-proof.jpg`，不含私人日志、真实用量或配对码；测试授权余数为 0，验收助手已停止。
+- **干净依赖验证**：独立目录 / 新缓存从 npm 官方源安装成功，19 项 Vitest + 3 项 Node 测试、格式与生产构建通过；GitHub Linux CI 同样通过。依赖版本和 integrity 均保持，仅更换 149 个镜像 tarball 下载地址。
 
-### 目标完成前尚需
+### 交付核验与剩余实机验证
 
-1. 修复 Pages 依赖下载并完成网站部署；源码与 [v0.4.0 助手下载附件](https://github.com/danjiahao88-sys/TokenAnalysis/releases/tag/v0.4.0) 已发布，GitHub 附件 digest 与本机哈希一致。
-2. 在实际 HTTPS 网站验证浏览器配对、本地网络权限、自动更新、刷新重连；EXE 安装向导、真实注销登录及独立用户环境继续验收。
-3. 上传时复核最终候选包的 SHA256SUMS 与实际附件一致；最终候选已包含最新第三方来源与使用说明。
+1. 已完成源码、网站和助手下载发布，CI 与 Pages 通过；GitHub 保存的附件 digest 与本机发布文件一致。
+2. 已完成实际 HTTPS / Edge 配对、自动更新、刷新重连和撤销；EXE 图形安装向导、真实注销登录及独立用户环境仍未验证，保留为实机验证项，不宣称已覆盖。
+3. 已核对实际附件名与 SHA256SUMS 一致，安装 EXE 使用无空格名称；发布文件包含当前使用说明和第三方来源，改名不改变已验收二进制。
 
-## 第三期（本机完成，待发布）
+## 第三期（已随 v0.4 发布，以下为原始验收记录）
 
 ### v0.3.1：Codex 桌面历史模型可见性
 
@@ -44,7 +51,7 @@
 以下为第三期 v0.3.0 的原始验收记录；本机后端现已由 v0.3.1 替换。
 
 - 官方动态：真实抓取 OpenAI 官方新闻与 Codex / Claude Code 官方 release Atom；40 条公开信息，原始标题、原文链接、来源日期、检查与成功时间分离。搜索 / 来源筛选 / 空态、失败历史回退、48 小时过期提示与官方导航可用。
-- Pages 工作流增加每日两次抓取；15 秒、4 MB、固定 HTTPS 来源限制与 XML DTD 拒绝。不自动提交抓取文件；已发布新闻优先作为失败回退。第三期未推送，因此新增调度未上线，也没有第三期远端 CI / Pages 成功证据。
+- Pages 工作流增加每日两次抓取；15 秒、4 MB、固定 HTTPS 来源限制与 XML DTD 拒绝。不自动提交抓取文件；已发布新闻优先作为失败回退。第三期本机验收时尚未推送；目前已随 v0.4 发布，远端 CI / Pages 证据见本页顶部。
 - MCP 配置：独立 `/api/inventory`，只读 Codex / Claude Code 用户级声明，显示 transport / 配置启用 / 来源读取状态。白名单响应不含命令、参数、地址、环境变量、请求头、原文、路径；不执行或测试连接。真实本机读取已通过，公开快照不含 MCP 信息。
 - 个人展示页：填写介绍、手动勾选未归档实践 / 实验、可选用量概览与 Skills 名称；预览后导出 Markdown / 独立 HTML。默认不选择记录，不推断个人业绩，演示保留虚构标识。HTML 全文转义、无脚本与外部资源、CSP、sandbox 预览。
 - IndexedDB v1 → v2 原位新增 profiles；来源隔离不变，旧记录保留。展示配置随新版档案备份导出；旧备份可导入且不清空已有配置，同身份按较新时间合并。

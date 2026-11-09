@@ -30,7 +30,7 @@ Vue 3 · TypeScript · ECharts · Java 21 · Spring Boot · SQLite
 - **MCP 配置**：只读 Codex / Claude Code 用户级配置声明，展示传输类型与配置启用状态，不执行命令或测试连接。
 - **个人展示页**：手动挑选实践与实验，预览后导出 Markdown / 无外部资源的独立 HTML，可用于 GitHub 作品与简历附件。
 
-当前开发版本 v0.4.0，新增网站配对本机采集助手与自动更新；尚未发布，线上仍为此前版本。发布与验收记录见 [项目进度](docs/STATUS.md)。
+当前版本 **v0.4.0 已发布**，支持网站配对本机采集助手与自动更新。Windows 助手可从 [Releases](https://github.com/danjiahao88-sys/TokenAnalysis/releases/tag/v0.4.0) 下载；已在 Edge 验证实际 HTTPS 网站的配对、自动更新和刷新重连。发布与验收边界见 [项目进度](docs/STATUS.md)。
 
 这里的 Token 是日志统计，不是账单，也不是生产力分数。Skills 安装数不代表调用次数。官方动态来自公开信息，与用量来源独立；是定时快照，不承诺实时或全模型覆盖。
 
@@ -40,7 +40,7 @@ Vue 3 · TypeScript · ECharts · Java 21 · Spring Boot · SQLite
 
 v0.4.0 提供自带 Temurin Java 运行环境的采集助手安装程序与便携包。首次从 [Releases](https://github.com/danjiahao88-sys/TokenAnalysis/releases) 下载并打开助手，在本机管理页生成配对码，再到网站输入一次。以后访问同一网站会自动重连，助手每 5 秒检查日志变化，网页自动更新，不需要运行终端或安装开发环境。
 
-**此版本尚未发布，下载页目前未承诺已有助手安装包。** 详情、权限、自动启动、撤销授权、浏览器限制与打包方式见 [采集助手使用说明](docs/ASSISTANT.md)。首次仍需安装和配对；未安装的网页不能直接扫描电脑。支持浏览器可能要求允许本站访问本地网络，不能绕过浏览器或企业限制。
+下载 [v0.4.0 Windows 安装程序](https://github.com/danjiahao88-sys/TokenAnalysis/releases/download/v0.4.0/AI-Footprint-Assistant-0.4.0-windows-x64-setup.exe)，或在同一版本下载页选择便携 ZIP 与 SHA256SUMS。详情、权限、自动启动、撤销授权、浏览器限制与打包方式见 [采集助手使用说明](docs/ASSISTANT.md)。首次仍需安装和配对；未安装的网页不能直接扫描电脑。支持浏览器可能要求允许本站访问本地网络，不能绕过浏览器或企业限制。
 
 下面的命令方式适用于开发者与源码体验。
 
@@ -114,7 +114,7 @@ Windows 也可分别运行：
 
 在 `frontend` 中运行 `npm run news:refresh` 可更新 `public/news.json`。三个固定官方源每源最多 20 条；抓取限制 15 秒、4 MB，不跟随跳转，拒绝 DTD / 实体声明。Atom 更新时间不冒充发布日期，无日期明确标未知。失败保留可用历史，分别记录本次检查和上次成功；超过 48 小时提示过期。
 
-Pages 工作流增加每 12 小时尝试刷新。GitHub 调度可能延迟，长期不活跃仓库的调度可能被平台暂停；页面只读取已发布快照，按钮不会触发抓取。Actions 优先读取上次发布的新闻作为失败回退，不可用时用仓库内快照；不自动提交新闻文件。第三期尚未推送，所以新增调度尚未上线。
+Pages 工作流每 12 小时尝试刷新，已随 v0.4 发布。GitHub 调度可能延迟，长期不活跃仓库的调度可能被平台暂停；页面只读取已发布快照，按钮不会触发抓取。Actions 优先读取上次发布的新闻作为失败回退，不可用时用仓库内快照；不自动提交新闻文件。
 
 MCP 仅覆盖 Codex 用户 `config.toml` 与 Claude 用户 `.claude.json` 顶层声明；不扫描项目配置、插件缓存或任意目录。不跟随配置文件本身的符号链接；单文件限 1 MB、每来源 200 项。返回短名称、工具、传输类型、启用声明与来源状态；不返回地址、命令、参数、环境变量、请求头、配置原文或路径。MCP 清单不进入 `/api/export`，也不进入个人展示导出。安装、配置启用、连接成功、实际调用是不同的证据。
 
