@@ -1,4 +1,6 @@
 import { openDB } from 'idb'
+import { profileSchema } from './portfolio-profile'
+import type { PortfolioProfile } from './portfolio-profile'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import { demoEntries, demoExperiments } from './notebook-demo'
 import {
@@ -22,18 +24,25 @@ interface NotebookDB extends DBSchema {
     indexes: { scope: string }
   }
   metadata: { key: string; value: boolean }
+  profiles: { key: string; value: PortfolioProfile }
 }
 export class NotebookRepository {
   private connection: Promise<IDBPDatabase<NotebookDB>>
   constructor(name = 'ai-footprint-notebook') {
-    this.connection = openDB<NotebookDB>(name, 1, {
-      upgrade(db) {
-        db.createObjectStore('entries', { keyPath: ['scope', 'id'] }).createIndex('scope', 'scope')
-        db.createObjectStore('experiments', { keyPath: ['scope', 'id'] }).createIndex(
-          'scope',
-          'scope'
-        )
-        db.createObjectStore('metadata')
+    this.connection = openDB<NotebookDB>(name, 2, {
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          db.createObjectStore('entries', { keyPath: ['scope', 'id'] }).createIndex(
+            'scope',
+            'scope'
+          )
+          db.createObjectStore('experiments', { keyPath: ['scope', 'id'] }).createIndex(
+            'scope',
+            'scope'
+          )
+          db.createObjectStore('metadata')
+        }
+        if (oldVersion < 2) db.createObjectStore('profiles')
       },
       blocking: () => {
         void this.connection.then((db) => db.close())
@@ -42,7 +51,7 @@ export class NotebookRepository {
   }
   async load(scope: string) {
     const db = await this.connection
-    const tx = db.transaction(['entries', 'experiments', 'metadata'], 'readwrite')
+    const tx = db.transaction(['entries', 'experiments', 'metadata', 'profiles'], 'readwrite')
     if (scope === 'demo' && !(await tx.objectStore('metadata').get('demo-seeded-v1'))) {
       for (const entry of demoEntries) await tx.objectStore('entries').put({ ...entry, scope })
       for (const experiment of demoExperiments)
@@ -51,10 +60,12 @@ export class NotebookRepository {
     }
     const entries = await tx.objectStore('entries').index('scope').getAll(scope)
     const experiments = await tx.objectStore('experiments').index('scope').getAll(scope)
+    const profile = await tx.objectStore('profiles').get(scope)
     await tx.done
     return {
       entries: entries.map((e) => practiceSchema.parse(e)),
-      experiments: experiments.map((e) => experimentSchema.parse(e))
+      experiments: experiments.map((e) => experimentSchema.parse(e)),
+      profile: profile ? profileSchema.parse(profile) : null
     }
   }
   async saveEntry(scope: string, entry: Practice) {
@@ -71,6 +82,10 @@ export class NotebookRepository {
     }
     await store.put({ ...parsed, scope })
     await tx.done
+  }
+  async saveProfile(scope: string, profile: PortfolioProfile) {
+    const parsed = profileSchema.parse(profile)
+    await (await this.connection).put('profiles', parsed, scope)
   }
   async saveExperiment(scope: string, experiment: Experiment) {
     const parsed = experimentSchema.parse(experiment)
@@ -92,7 +107,7 @@ export class NotebookRepository {
     if ((scope === 'demo') !== (backup.provenance === 'demo'))
       throw new Error('演示档案与个人档案不能混合，请切换到对应的数据来源后导入。')
     const db = await this.connection
-    const tx = db.transaction(['entries', 'experiments'], 'readwrite')
+    const tx = db.transaction(['entries', 'experiments', 'profiles'], 'readwrite')
     const entryIds = await tx.objectStore('entries').index('scope').getAllKeys(scope)
     const experimentIds = await tx.objectStore('experiments').index('scope').getAllKeys(scope)
     if (
@@ -123,6 +138,13 @@ export class NotebookRepository {
       }
       await tx.objectStore('experiments').put({ ...experiment, scope })
       imported++
+    }
+    if (backup.profile) {
+      const old = await tx.objectStore('profiles').get(scope)
+      if (!old || Date.parse(old.updatedAt) < Date.parse(backup.profile.updatedAt)) {
+        await tx.objectStore('profiles').put(backup.profile, scope)
+        imported++
+      } else skipped++
     }
     await tx.done
     return { imported, skipped }

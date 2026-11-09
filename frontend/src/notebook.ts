@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { profileSchema } from './portfolio-profile'
 import type { Snapshot } from './data'
 
 export const calendarDate = z
@@ -80,7 +81,8 @@ export const notebookSchema = z
     exportedAt: timestamp,
     provenance: z.enum(['demo', 'personal']),
     entries: z.array(practiceSchema).max(MAX_PRACTICES),
-    experiments: z.array(experimentSchema).max(MAX_EXPERIMENTS)
+    experiments: z.array(experimentSchema).max(MAX_EXPERIMENTS),
+    profile: profileSchema.optional()
   })
   .superRefine((value, ctx) => {
     if (

@@ -16,6 +16,9 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 footprint:
+  assistant:
+    origins: ${AIF_ALLOWED_ORIGINS:https://danjiahao88-sys.github.io,http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:4173}
   codex-home: ${AIF_CODEX_HOME:${user.home}/.codex}
   claude-home: ${AIF_CLAUDE_HOME:${user.home}/.claude}
+  claude-config: ${AIF_CLAUDE_CONFIG:${user.home}/.claude.json}
   timezone: ${AIF_TIMEZONE:Asia/Shanghai}

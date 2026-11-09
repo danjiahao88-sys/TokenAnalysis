@@ -13,6 +13,141 @@
   display: grid;
   gap: 24px;
 }
+.history-panel {
+  margin-top: 24px;
+  margin-bottom: 24px;
+}
+.history-explanation {
+  padding: 0 24px 18px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.history-explanation p + p {
+  margin-top: 8px;
+}
+.news-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.news-item {
+  display: block;
+  padding: 24px;
+  color: var(--ink);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  transition: border-color 0.2s;
+}
+.news-item:hover {
+  border-color: var(--green);
+}
+.news-item h3 {
+  font-size: 18px;
+  line-height: 1.65;
+  margin: 18px 0;
+}
+.news-item > div {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.news-item p {
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 0;
+}
+.news-source-status {
+  padding: 0;
+  margin: 16px 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+.news-source-status li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.news-source-status small {
+  width: 100%;
+  color: var(--secondary);
+  line-height: 1.8;
+}
+.news-source-status a,
+.source-links a {
+  color: var(--green);
+}
+.news-state summary {
+  cursor: pointer;
+  padding: 12px 0;
+}
+.source-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+.source-links a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.mcp-name {
+  margin-top: 20px !important;
+}
+.portfolio-choices {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 18px 0;
+}
+.portfolio-choices legend {
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.portfolio-choices label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 0;
+  line-height: 1.7;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.portfolio-choices input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 5px;
+  accent-color: var(--green);
+}
+.portfolio-choices small {
+  display: block;
+  color: var(--secondary);
+}
+.portfolio-preview-heading {
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.portfolio-preview {
+  display: block;
+  width: 100%;
+  height: 720px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f5f7f2;
+}
+@media (max-width: 760px) {
+  .news-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .portfolio-preview {
+    height: 640px;
+  }
+}
 .notebook-toolbar {
   padding: 20px 24px;
   display: flex;
@@ -297,5 +432,94 @@
   }
   .report-hero .notebook-actions {
     width: 100%;
+  }
+}
+.assistant-panel {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.assistant-heading,
+.assistant-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.assistant-heading h2 {
+  margin: 8px 0;
+  font-size: 22px;
+}
+.assistant-badge {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.assistant-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  padding-left: 24px;
+  margin: 24px 0;
+}
+.assistant-steps li {
+  padding-right: 12px;
+}
+.assistant-steps strong,
+.assistant-steps a,
+.assistant-steps small {
+  display: block;
+  margin: 6px 0;
+}
+.assistant-steps small,
+.assistant-panel > small {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.assistant-panel a {
+  color: var(--green);
+  text-underline-offset: 4px;
+}
+.assistant-pair {
+  display: flex;
+  align-items: end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+}
+.assistant-pair label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.assistant-pair input {
+  font: inherit;
+  font-size: 20px;
+  letter-spacing: 0.15em;
+  min-height: 46px;
+  max-width: 240px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.assistant-panel > small {
+  display: block;
+  margin-top: 16px;
+}
+@media (max-width: 760px) {
+  .assistant-steps {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .assistant-heading h2 {
+    font-size: 20px;
+  }
+  .assistant-panel {
+    padding: 20px;
   }
 }

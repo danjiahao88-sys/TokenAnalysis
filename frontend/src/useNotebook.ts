@@ -4,10 +4,12 @@ import { NotebookRepository } from './notebook-db'
 import { notebookSchema, notebookScope } from './notebook'
 import type { Experiment, Practice } from './notebook'
 import type { Snapshot } from './data'
+import type { PortfolioProfile } from './portfolio-profile'
 
 export function useNotebook(snapshot: Ref<Snapshot>) {
   let repository: NotebookRepository | undefined
   const scope = computed(() => notebookScope(snapshot.value))
+  const profile = ref<PortfolioProfile | null>(null)
   const entries = ref<Practice[]>([]),
     experiments = ref<Experiment[]>([])
   const ready = ref(false),
@@ -20,12 +22,14 @@ export function useNotebook(snapshot: Ref<Snapshot>) {
     ready.value = false
     entries.value = []
     experiments.value = []
+    profile.value = null
     error.value = ''
     try {
       const result = await getRepository().load(currentScope)
       if (run !== generation) return
       entries.value = result.entries
       experiments.value = result.experiments
+      profile.value = result.profile
       ready.value = true
     } catch {
       if (run === generation)
@@ -57,7 +61,8 @@ export function useNotebook(snapshot: Ref<Snapshot>) {
       exportedAt: new Date().toISOString(),
       provenance: scope.value === 'demo' ? 'demo' : 'personal',
       entries: entries.value,
-      experiments: experiments.value
+      experiments: experiments.value,
+      profile: profile.value ?? undefined
     })
   }
   async function restore(text: string, expectedScope = scope.value) {
@@ -69,6 +74,23 @@ export function useNotebook(snapshot: Ref<Snapshot>) {
     if (selected === scope.value) await load()
     return result
   }
-  return { entries, experiments, ready, error, scope, saveEntry, saveExperiment, backup, restore }
+  async function saveProfile(value: PortfolioProfile) {
+    const selected = scope.value
+    await getRepository().saveProfile(selected, { ...value, updatedAt: new Date().toISOString() })
+    if (selected === scope.value) await load()
+  }
+  return {
+    entries,
+    experiments,
+    profile,
+    ready,
+    error,
+    scope,
+    saveEntry,
+    saveExperiment,
+    saveProfile,
+    backup,
+    restore
+  }
 }
 export type Notebook = ReturnType<typeof useNotebook>

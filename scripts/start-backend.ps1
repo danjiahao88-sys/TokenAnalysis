@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Push-Location (Join-Path $projectRoot 'backend')
 try {
-    $jarPath = Join-Path (Get-Location) 'target/ai-footprint-0.2.0.jar'
+    $jarPath = Join-Path (Get-Location) 'target/ai-footprint-0.4.0.jar'
     if ($Build -or -not (Test-Path -LiteralPath $jarPath)) {
         $mavenCmd = Get-Command mvn.cmd -ErrorAction SilentlyContinue
         if (-not $mavenCmd) {

@@ -9,10 +9,10 @@ import org.slf4j.LoggerFactory;
 @Component
 public class StartupCollection implements ApplicationRunner {
     private static final Logger LOG = LoggerFactory.getLogger(StartupCollection.class);
-    private final SnapshotService service;
-    public StartupCollection(SnapshotService service) { this.service=service; }
+    private final LiveCollection service;
+    public StartupCollection(LiveCollection service) { this.service=service; }
     @Override public void run(ApplicationArguments args) {
-        try { var c=service.collect(); LOG.info("Local AI scan completed: {} files, {} malformed lines",c.files(),c.malformedLines()); }
+        try { service.scan(true); LOG.info("Initial local AI scan: {}",service.status().state()); }
         catch (Exception ex) { LOG.warn("Initial scan unavailable. Previous data retained; use the local sync action to retry."); }
     }
 }

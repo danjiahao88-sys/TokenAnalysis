@@ -1,0 +1,33 @@
+name: Build Windows assistant
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Verify backend
+        run: mvn -B verify
+        working-directory: backend
+      - name: Fetch pinned packaging tools
+        shell: pwsh
+        run: ./scripts/fetch-packaging-dependencies.ps1
+      - name: Build installer and portable package
+        shell: pwsh
+        run: ./scripts/build-assistant.ps1 -RuntimeHome '.tools/packaging/jdk-21.0.13+9-jre' -WixHome '.tools/packaging/wix'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-assistant
+          path: |
+            .local/assistant-release/*/*.exe
+            .local/assistant-release/*/*.zip
+            .local/assistant-release/*/SHA256SUMS.txt
+          include-hidden-files: true
+          if-no-files-found: error

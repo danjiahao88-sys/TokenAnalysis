@@ -1,31 +1,34 @@
 {
   "name": "@ai-footprint/web",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "vitest run",
-    "format": "prettier --write src/**/*.ts src/**/*.vue src/**/*.css vite.config.ts",
-    "format:check": "prettier --check src/**/*.ts src/**/*.vue src/**/*.css vite.config.ts"
+    "test": "vitest run src && node --test scripts/news.test.mjs",
+    "format": "prettier --write src/**/*.ts src/**/*.vue src/**/*.css vite.config.ts scripts/*.mjs",
+    "format:check": "prettier --check src/**/*.ts src/**/*.vue src/**/*.css vite.config.ts scripts/*.mjs",
+    "news:refresh": "node scripts/news.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.8",
     "@fontsource/ibm-plex-mono": "^5.2.7",
-    "idb": "^8.0.4",
-    "echarts": "^6.1.0",
     "@lucide/vue": "^1.68.0",
+    "echarts": "^6.1.0",
+    "idb": "^8.0.4",
     "vue": "^3.5.44",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^22.19.0",
     "@vitejs/plugin-vue": "^6.0.4",
-    "typescript": "~5.9.3",
-    "prettier": "^3.6.2",
     "fake-indexeddb": "^6.2.5",
+    "https-proxy-agent": "^7.0.6",
+    "prettier": "^3.6.2",
+    "rss-parser": "^3.13.0",
+    "typescript": "~5.9.3",
     "vite": "^7.3.1",
     "vitest": "^4.0.18",
     "vue-tsc": "^3.2.5"

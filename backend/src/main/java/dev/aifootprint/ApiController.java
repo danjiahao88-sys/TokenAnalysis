@@ -12,8 +12,16 @@ import java.util.Map;
 @RequestMapping("/api")
 public class ApiController {
     private final SnapshotService service;
-    public ApiController(SnapshotService service) { this.service = service; }
-    @GetMapping("/health") public Map<String,String> health() { return Map.of("status","ok","version","0.2.0"); }
+    private final McpInventory inventory;
+    private final CodexHistoryInventory history;
+    public ApiController(SnapshotService service, McpInventory inventory, CodexHistoryInventory history) { this.service = service; this.inventory = inventory; this.history = history; }
+    @GetMapping("/health") public Map<String,String> health() { return Map.of("status","ok","version","0.4.0"); }
+    @GetMapping("/codex-history") public ResponseEntity<CodexHistoryInventory.Inventory> history() {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(history.scan());
+    }
+    @GetMapping("/inventory") public ResponseEntity<McpInventory.Inventory> inventory() {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(inventory.scan());
+    }
     @GetMapping("/snapshot") public ResponseEntity<SnapshotService.Snapshot> snapshot() {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.snapshot(false));
     }

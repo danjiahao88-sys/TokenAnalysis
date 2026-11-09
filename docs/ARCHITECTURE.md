@@ -2,12 +2,16 @@
 
 ## 范围
 
-本项目是本机单用户工具和静态公开演示的组合。Vue 用量展示依赖 v1 快照；Java 负责日志解析、Skills 清单、SQLite 持久化和脱敏导出。第二期增加独立的浏览器实践/实验档案与本地规则周报。没有云端账户系统、计费服务或自动上传。
+本项目是本机单用户工具和静态公开演示的组合。Vue 用量展示依赖 v1 快照；Java 负责日志解析、Skills 清单、SQLite 持久化和脱敏导出。第二期增加独立的浏览器实践/实验档案与本地规则周报。第三期增加独立的公开动态管线、本机 MCP 配置只读 API 和可选个人展示导出。没有云端账户系统、计费服务或个人数据自动上传。
 
 ## 模块
 
 | 模块 | 职责 |
 |---|---|
+| `McpInventory` | tomlj / Jackson 解析固定用户配置，只返回声明白名单，不连接服务 |
+| `CodexHistoryInventory` / `CodexHistoryView` | 只读桌面索引，独立展示原日志缺失的会话累计参考，不参与请求统计 |
+| `news.mjs` / `NewsRadarView` | 有界抓取固定官方 RSS/Atom，发布公开快照、日期与失败状态 |
+| `portfolio-profile.ts` / `portfolio.ts` / `PortfolioView` | 个人展示配置、明确选择、同一数据投影预览与安全导出 |
 | `CodexCollector` | 流式逐行读取会话文件，提取模型与计数，合并新旧格式并去重 |
 | `ClaudeCollector` | 读取 projects JSONL 元数据，包含子代理，缓存归一化及重复 message/request 合并 |
 | `SkillInventory` | 只读取 Skill 前置元数据窗口，不执行 Skill，不扫描历史插件缓存 |
@@ -26,10 +30,26 @@
 |---|---|---|
 | GET | `/api/health` | 版本与存活状态 |
 | POST | `/api/collect` | 扫描配置的本机目录，成功后事务替换；要求 `X-AI-Footprint: local` |
+| GET | `/api/inventory` | 本机 MCP 配置声明与来源读取状态，no-store，不包含连接参数 |
+| GET | `/api/codex-history` | 独立 Codex 历史索引参考，no-store，不进入用量快照 |
 | GET | `/api/snapshot` | 本机聚合快照，不含完整路径和聊天正文 |
 | GET | `/api/export` | 公共字段白名单快照，带附件响应头 |
 
-没有 CORS 放行。前端开发和预览通过 Vite 同源代理访问。固定回环绑定与 Host 校验用于避免误暴露和 DNS rebinding。并非多用户授权系统，不应自行改为公网监听。
+原 `/api/` 没有 CORS 放行，供本机前端同源代理与管理页使用。v0.4 仅独立 `/bridge/` 按精确来源开放受控 CORS，私有数据仍要求配对令牌。所有路由保留回环 Host 校验，不应自行改为公网监听。
+
+## 网站与本机助手（v0.4）
+
+网站静态部署与采集服务解耦。网站固定请求当前设备 `http://127.0.0.1:17890/bridge/`，不接受任意内网地址，不向云端发送用量。安装包使用 jpackage 原生 Windows 入口，携带可分发 Temurin JRE 与后端 JAR；无需用户 Java / Node / Maven。桌面模式数据库和日志在当前用户 LocalAppData 独立目录，文件锁避免同一目录重复启动；可选系统托盘与用户显式开启的登录启动快捷方式。源码模式保持原 `.local` 数据位置。
+
+`AssistantAccess` 的 8 位随机码只能由本机管理页通过带自定义头的本地请求生成，5 分钟有效，成功一次即失效，每分钟最多 5 次配对尝试，重发码不重置限制。`/bridge/pair` 只接受配置的完整 Origin，成功发 256 位随机令牌；SQLite `assistant_grant` 仅保存 SHA-256 哈希、来源和创建时间，最多 20 个浏览器授权。每次私有读取都校验 Origin + Authorization；没有 Cookie、URL 令牌、通配来源或 credentials CORS。`/bridge/health` 仅有产品、协议与版本，不返回用量；本机管理可撤销全部，网站可撤销当前授权。
+
+`AssistantBridgeFilter` 复用 Spring `DefaultCorsProcessor` / `CorsConfiguration`，方法与请求头白名单、精确允许来源、兼容旧 PNA 预检。默认网站为项目 GitHub Pages 所在 Origin；授权按 Origin 而非仓库路径。自定义 HTTPS 域名由 `AIF_ALLOWED_ORIGINS` 显式配置并重新配对。Chrome 142 起的本地网络权限仍由浏览器决定；CORS / 配对不绕过该权限，不修改浏览器安全选项。全部页面禁用 iframe，管理页 CSP 限制本地脚本与样式，接口 no-store，连接请求不带 Cookie、不跟随跳转。
+
+`LiveCollection` 每 5 秒比较日志 / Skill 的文件名、大小与修改时间指纹，变化时复用原事务采集器，每 60 秒强制重扫以覆盖元数据未变化的改写。同一时刻只运行一个扫描，失败保留原数据与最近成功时间，状态独立为 waiting / collecting / ready / error。现版本仍完整重扫请求日志，未实现增量解析或全部格式兼容。
+
+网站每 5 秒读取已授权状态，在成功采集时间变化时更新快照；页面隐藏时暂停轮询。自动更新不重置当前筛选。来源切换 / 卸载使用 generation 与 AbortController 阻止旧请求覆盖；演示和导入快照暂停自动读取。凭据仅存在当前网站浏览器存储，不持久化用量；401 清除失效令牌，离线展示上次数据并重试。新访问时有有效授权且未选择其他来源则自动重连。日志写入、扫描、页面检查各有延迟，不宣称逐 Token 实时或云端全账号覆盖。
+
+桥接路由：GET health / status / snapshot / export / inventory / codex-history；POST pair / collect / disconnect。status 与所有统计接口需授权，只有 health 与提交配对码可未授权访问；旧 `/api/` 继续不放行跨站。
 
 ## v1 JSON
 
@@ -82,15 +102,41 @@ Claude 输入 = `input_tokens + cache_read_input_tokens + cache_creation_input_t
 
 ## 浏览器档案协议
 
-IndexedDB 名称 `ai-footprint-notebook`，版本 1，entries / experiments 使用 `[scope,id]` 复合主键，metadata 只记录演示 seed。scope 为 demo、local 或 `public:<generatedAt>`；不同来源切换清空当前视图再读取，使用 generation 防止旧异步读覆盖新来源。演示 fixture 只首次初始化；不会重置访问者的演示编辑。
+IndexedDB 名称 `ai-footprint-notebook`，版本 2（从 v1 原位新增 profiles store），entries / experiments 使用 `[scope,id]` 复合主键，metadata 只记录演示 seed。scope 为 demo、local 或 `public:<generatedAt>`；不同来源切换清空当前视图再读取，使用 generation 防止旧异步读覆盖新来源。演示 fixture 只首次初始化；不会重置访问者的演示编辑。
 
-备份 `format: ai-footprint-notebook-v1` 包含 exportedAt、provenance（demo/personal）、entries、experiments；Zod 剥离未知字段，校验日历、长度、HTTPS 链接、实验组身份、整数计数。未知用量、耗时、评分为 null；通过率分母仅为 pass/fail，不含 untested。归档可恢复，不物理删除，归档不进入周报或实验统计。
+备份 `format: ai-footprint-notebook-v1` 包含 exportedAt、provenance（demo/personal）、entries、experiments、可选 profile；旧备份缺少 profile 时不覆盖已有配置；Zod 剥离未知字段，校验日历、长度、HTTPS 链接、实验组身份、整数计数。未知用量、耗时、评分为 null；通过率分母仅为 pass/fail，不含 untested。归档可恢复，不物理删除，归档不进入周报或实验统计。
 
 单空间最多 500 条实践、300 个实验，归档计入；UI 备份导入上限 32 MB。保存及合并在事务内先校验容量，整份备份先验证再写入。相同 ID 只接收 updatedAt 较新版本，按时间戳值比较；演示和个人档案禁止混合。文件读取期间若切换来源，拒绝继续导入。不是多人协作系统，没有跨设备自动同步与冲突日志。
 
 档案保存在当前浏览器当前 origin；清除站点数据会丢失，需手动备份。用量快照只在页面内存，独立档案不进入 `/api/export`。备份与 Markdown 包含用户手工笔记，不自动脱敏，也不自动上传。公开快照重新导入相同 generatedAt 可找回该档案；不同 generatedAt 进入新空间。
 
 周报依据快照统计时区的日期字段，周一至周日，截止快照最新活动日。未完整周只与上周相同天数比较，无基期则不显示百分比。无用量时按 generatedAt 在统计时区的日期选周。实践与实验按各自手工日期关联，只输出统计与手工内容，不调用付费 API，不推断生产力或自动模型评分。
+
+## 第三期独立数据流
+
+### Codex 历史索引补充（v0.3.1）
+
+默认 Codex home 下按数字选择最新 `state_*.sqlite`，使用既有 SQLite JDBC 只读连接与 `query_only`，不创建或修改 Codex 索引。只选择 threads 的模型、累计计数、原日志位置和更新时间；日志位置仅用于核验，不返回。索引文件本身的符号链接不跟随。索引格式与未来版本并非稳定公共协议，不兼容时整次返回状态，不回退旧库冒充当前结果。
+
+最多检查按更新排序的 1,000 个会话，多读一条判断 truncated。日志路径必须为配置 home 的 sessions / archived_sessions 内绝对路径；兼容 Windows 扩展路径前缀。仍有常规原日志的会话排除；路径无法核验、非法或空计数记 skippedRows，不补零。只对确定缺失的日志按最后模型归组，返回会话数、索引累计 Token 与最近索引更新。更新日期不是请求日期。无标题、正文、原会话身份或完整路径；不持久化到项目用量表。
+
+官方源码表明 tokens_used 来自 total_token_usage.total_tokens 的最后观察值，不能恢复逐请求拆分；模型只是会话最后记录值，可能含模型切换及分叉复制，不能全量归属该模型。前端 Zod 检查安全整数、唯一模型和来源计数一致性，切换来源取消旧请求并清空。仅本机模型页可见，复用模型搜索与工具过滤，不应用日期窗口；不并入 snapshot、趋势、周报、公开导出或个人展示。
+
+### MCP 声明
+
+`/api/inventory` 复用回环 Host 防护与同源代理，不修改 v1 用量快照。扫描 Codex home 下 config.toml 和 AIF_CLAUDE_CONFIG（默认用户 .claude.json）；仅读顶层用户声明，Claude projects 中的路径键完全忽略。输入限 1 MB；NOFOLLOW_LINKS 打开文件，每来源最多 200 个 server；解析失败整来源不半成功。状态区分 ready / missing / invalid / unreadable，无原始异常内容。服务端只构造 id、短名称、tool、source、transport、enabled；id 为来源加原名称的 SHA-256 短标识；名称不符合短标签字符集时替换。没有环境变量替换、命令执行或网络探测。响应不持久化，不进入公开导出。配置中的短名称本身也可能带个人语义，用户仍应自行判断分享范围。
+
+### 公开新闻
+
+Node https 有界获取三个固定源，rss-parser 3.13.0 只负责 parseString；请求拒绝跳转、15 秒期限、4 MB 上限，拒绝 XML DOCTYPE / ENTITY。链接按源 HTTPS 前缀白名单，标题作为文本显示，不渲染 feed HTML。Atom 使用自定义 rawPublished/rawUpdated，绕开库默认将 updated 回填 pubDate 的行为。每源最多 20 条，按有效日期排序并按 URL 去重。快照 ai-footprint-news-v1 分离 generatedAt、checkedAt、lastSuccessAt、publishedAt / updatedAt；错误保留验证后的上次内容，不能将本次检查当作抓取成功。
+
+静态文件 public/news.json 只含公开信息。Pages 在 push / 手动 / 每日两次调度中读取官方源，失败优先回退到已发布新闻，再回退仓库快照；没有自动 commit。调度不保证准时，前端按 48 小时阈值与各来源失败显示状态。运行时不读本机日志、不使用用户 API Key；按钮只重读静态文件。AIF_NEWS_PROXY 或 HTTPS_PROXY 可指定运行环境已有代理，代理值和抓取异常不输出到产物。
+
+### 个人展示
+
+profiles 以 scope 为主键，与 entries / experiments 一起来源隔离。保存先 Zod 白名单，备份保留可选 profile，较新 updatedAt 合并；旧 v1 数据迁移只新增 store，不重建原记录。演示配置默认使用虚构名片，个人默认空白且所有可选统计关闭。entryIds / experimentIds 明确选择，已归档或不存在的身份不导出。用量可选项仅输出整个当前快照的日期、模型和汇总，不输出项目和会话；Skills 仅可选安装名称，无 MCP 信息。
+
+buildPortfolio 同时生成 Markdown 与独立 HTML，HTML 预览使用 sandbox 空权限 srcdoc；所有用户文字转义，链接仅允许无 userinfo 的 HTTPS。HTML 带 default-src none CSP 与内联样式，无脚本或外部请求资源。Markdown 转义文本和链接边界；未知指标仍显示未记录，人工实验结论不推断。导出只下载到本机，不修改线上默认页；手工笔记不做自动内容脱敏。
 
 ## 发布边界
 

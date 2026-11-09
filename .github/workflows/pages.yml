@@ -1,5 +1,7 @@
 name: Deploy demo to GitHub Pages
 on:
+  schedule:
+    - cron: '17 2,14 * * *'
   workflow_dispatch:
   push:
     branches: [main]
@@ -22,6 +24,8 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+        working-directory: frontend
+      - run: npm run news:refresh
         working-directory: frontend
       - run: npm run test
         working-directory: frontend

@@ -36,6 +36,19 @@ import NotebookToolbar from './components/NotebookToolbar.vue'
 import WeeklyReportView from './components/WeeklyReportView.vue'
 import PracticeTimelineView from './components/PracticeTimelineView.vue'
 import ExperimentLabView from './components/ExperimentLabView.vue'
+import NewsRadarView from './components/NewsRadarView.vue'
+import McpInventoryView from './components/McpInventoryView.vue'
+import PortfolioView from './components/PortfolioView.vue'
+import CodexHistoryView from './components/CodexHistoryView.vue'
+import AssistantConnectionView from './components/AssistantConnectionView.vue'
+import {
+  assistantFetch,
+  assistantToken,
+  liveStatusSchema,
+  rememberSource,
+  shouldReconnect
+} from './assistant-client'
+import type { LiveStatus } from './assistant-client'
 import { useNotebook } from './useNotebook'
 import {
   fmt,
@@ -45,7 +58,6 @@ import {
   parseImport,
   shiftDate,
   snapshotSchema,
-  sourceLinks,
   summarize,
   windowRows
 } from './data'
@@ -74,6 +86,8 @@ const navigation = [
   { id: 'models', label: '模型分析', en: 'Models', icon: Layers },
   { id: 'tools', label: '工具箱', en: 'Tools', icon: Terminal },
   { id: 'skills', label: 'Skills 工作台', en: 'Skills', icon: Blocks },
+  { id: 'mcp', label: 'MCP 配置', en: 'MCP', icon: Blocks },
+  { id: 'portfolio', label: '个人展示页', en: 'Portfolio', icon: Fingerprint },
   { id: 'weekly', label: 'AI 使用周报', en: 'Weekly', icon: CalendarDays },
   { id: 'practice', label: '实践时间线', en: 'Practice', icon: BookOpen },
   { id: 'experiments', label: '模型实验室', en: 'Experiments', icon: Cpu },
@@ -271,21 +285,25 @@ function toggleTheme() {
   localStorage.setItem('footprint-theme', dark.value ? 'dark' : 'light')
 }
 function useDemo() {
+  stopLive()
+  rememberSource(false)
   snapshot.value = demo
   tool.value = 'all'
   skillCategory.value = '全部分类'
-  message('已切换到虚构示例，所有展示数据均来自演示数据集。')
+  message('使用量与个人档案已切换到虚构演示；官方动态仍为独立的公开信息。')
 }
 async function responseJson(response: Response) {
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   return response.json()
 }
 async function connectLocal(sync = false) {
+  stopLive()
+  const generation = liveGeneration
   loading.value = true
   try {
     if (sync)
       await responseJson(
-        await fetch('/api/collect', {
+        await assistantFetch('collect', {
           method: 'POST',
           headers: { 'X-AI-Footprint': 'local' },
           signal: AbortSignal.timeout(120000)
@@ -293,21 +311,29 @@ async function connectLocal(sync = false) {
       )
     const result = snapshotSchema.parse(
       await responseJson(
-        await fetch('/api/snapshot', { cache: 'no-store', signal: AbortSignal.timeout(15000) })
+        await assistantFetch('snapshot', { cache: 'no-store', signal: AbortSignal.timeout(15000) })
       )
     )
     if (result.mode !== 'local') throw new Error('Unexpected source')
+    if (generation !== liveGeneration) return
     snapshot.value = result
     tool.value = 'all'
     skillCategory.value = '全部分类'
     message(
       sync ? '本机数据已同步，重复导入不会叠加计数。' : '已连接本地服务，当前显示本机日志统计。'
     )
+    rememberSource(true)
+    offline.value = false
+    liveTimer = setTimeout(pollLive, 5000)
   } catch {
+    if (generation !== liveGeneration) return
+    showAssistant.value = true
+    offline.value = true
+    if (assistantToken.value) liveTimer = setTimeout(() => void connectLocal(), 10000)
     message(
       sync
         ? '同步未完成，当前数据已保留。请检查本地服务与日志读取权限。'
-        : '暂时无法连接本地服务。请先启动后端，再点击「本机数据」。',
+        : '暂时无法连接采集助手，请按下方步骤安装并配对；如已安装，请检查本地网络权限。',
       true
     )
   } finally {
@@ -321,6 +347,8 @@ async function importFile(event: Event) {
   try {
     if (file.size > 5 * 1024 * 1024) throw new Error('快照不能超过 5 MB。')
     const result = parseImport(await file.text())
+    stopLive()
+    rememberSource(false)
     snapshot.value = result
     tool.value = 'all'
     skillCategory.value = '全部分类'
@@ -342,7 +370,10 @@ async function exportSnapshot() {
     const data = isLocal.value
       ? snapshotSchema.parse(
           await responseJson(
-            await fetch('/api/export', { cache: 'no-store', signal: AbortSignal.timeout(15000) })
+            await assistantFetch('export', {
+              cache: 'no-store',
+              signal: AbortSignal.timeout(15000)
+            })
           )
         )
       : snapshot.value
@@ -381,8 +412,62 @@ onMounted(() => {
   viewportMedia = matchMedia('(max-width: 760px)')
   narrow.value = viewportMedia.matches
   viewportMedia.addEventListener('change', viewportChanged)
+  if (shouldReconnect()) void connectLocal()
 })
-onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChanged))
+onBeforeUnmount(() => {
+  viewportMedia?.removeEventListener('change', viewportChanged)
+  stopLive()
+})
+
+const showAssistant = ref(true),
+  offline = ref(false),
+  liveStatus = ref<LiveStatus>()
+let liveGeneration = 0,
+  liveTimer: ReturnType<typeof setTimeout> | undefined,
+  liveController: AbortController | undefined
+function stopLive() {
+  liveGeneration++
+  clearTimeout(liveTimer)
+  liveController?.abort()
+}
+async function pollLive() {
+  const generation = liveGeneration
+  if (!isLocal.value) return
+  if (document.hidden) {
+    liveTimer = setTimeout(pollLive, 5000)
+    return
+  }
+  const controller = new AbortController()
+  liveController = controller
+  const timeout = setTimeout(() => controller.abort(), 15000)
+  try {
+    const status = liveStatusSchema.parse(
+      await responseJson(await assistantFetch('status', { signal: controller.signal }))
+    )
+    if (generation !== liveGeneration) return
+    liveStatus.value = status
+    if (offline.value || (status.lastSuccessAt && status.lastSuccessAt !== lastLiveSuccess)) {
+      const updated = snapshotSchema.parse(
+        await responseJson(await assistantFetch('snapshot', { signal: controller.signal }))
+      )
+      if (generation !== liveGeneration) return
+      if (updated.mode !== 'local') throw Error()
+      snapshot.value = updated
+      lastLiveSuccess = status.lastSuccessAt
+    }
+    offline.value = false
+  } catch {
+    if (generation === liveGeneration) offline.value = true
+  } finally {
+    clearTimeout(timeout)
+    if (generation === liveGeneration && isLocal.value) liveTimer = setTimeout(pollLive, 5000)
+  }
+}
+let lastLiveSuccess: string | null = null
+function assistantDisconnected() {
+  useDemo()
+  showAssistant.value = true
+}
 </script>
 
 <template>
@@ -425,7 +510,7 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
           <button @click="navigate('data')">了解数据边界 <ArrowUpRight :size="14" /></button>
         </div>
         <div class="sidebar-footer">
-          <span class="version-dot"></span><span>v0.2.0 · Local first</span
+          <span class="version-dot"></span><span>v0.4.0 · Local first</span
           ><button
             class="icon-button"
             :aria-label="dark ? '切换浅色主题' : '切换深色主题'"
@@ -484,9 +569,13 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
                         ? '连接日常使用的 AI 工具，让分散的足迹汇聚在一起。'
                         : page === 'radar'
                           ? '保持好奇，跟随可靠的来源，发现下一次探索的方向。'
-                          : ['weekly', 'practice', 'experiments'].includes(page)
-                            ? '从日志统计到实践证据，积累属于自己的 AI 探索档案。'
-                            : '了解数据从哪里来、如何统计，以及分享时会包含什么。'
+                          : page === 'mcp'
+                            ? '整理用户级 MCP 配置声明，区分安装、启用与真实调用。'
+                            : page === 'portfolio'
+                              ? '将愿意分享的探索过程，整理成可预览、可导出的个人作品。'
+                              : ['weekly', 'practice', 'experiments'].includes(page)
+                                ? '从日志统计到实践证据，积累属于自己的 AI 探索档案。'
+                                : '了解数据从哪里来、如何统计，以及分享时会包含什么。'
               }}
             </p>
           </div>
@@ -503,7 +592,13 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
           <div>
             <span :class="['tiny-dot', { green: !isDemo }]"></span
             ><strong>{{
-              isDemo ? '正在浏览演示空间' : isLocal ? '已连接本机工作空间' : '正在浏览公开快照'
+              isDemo
+                ? '正在浏览演示空间'
+                : isLocal
+                  ? offline
+                    ? '本机连接中断 · 上次数据'
+                    : '已连接本机工作空间'
+                  : '正在浏览公开快照'
             }}</strong
             ><span class="banner-detail">{{
               isDemo
@@ -520,6 +615,15 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
             </button>
           </div>
         </div>
+
+        <AssistantConnectionView
+          v-if="showAssistant || isLocal || assistantToken"
+          :local="isLocal"
+          :status="liveStatus"
+          :offline="offline"
+          @connected="connectLocal()"
+          @disconnected="assistantDisconnected"
+        />
 
         <template v-if="page === 'overview' || page === 'models'">
           <div class="filter-bar">
@@ -823,6 +927,12 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
               <p v-if="!filteredModels.length" class="empty-inline">没有找到匹配的模型。</p>
             </div>
           </section>
+          <CodexHistoryView
+            :mode="snapshot.mode"
+            :timezone="snapshot.timezone"
+            :query="query"
+            :tool="tool"
+          />
           <div class="info-pair">
             <article class="panel info-card">
               <Layers :size="22" />
@@ -981,49 +1091,20 @@ onBeforeUnmount(() => viewportMedia?.removeEventListener('change', viewportChang
             <p>试试其他关键词或分类；本地清单只覆盖用户与系统 skills 目录。</p>
           </div>
           <p class="section-note">
-            <CircleHelp :size="15" />MCP 服务发现与可核验的 Skill 调用统计将在后续版本扩展。
+            <CircleHelp :size="15" />MCP 用户级配置可在「MCP 配置」查看；Skill
+            真实调用统计仍待扩展。
           </p>
         </template>
 
-        <template v-else-if="page === 'radar'">
-          <section class="radar-hero">
-            <div>
-              <span class="eyebrow">A LITTLE CURIOSITY, EVERY DAY</span>
-              <h2>保持好奇，<br />与 AI 的变化同频。</h2>
-              <p>从官方来源出发，发现模型、工具与开源生态。</p>
-            </div>
-            <Radio :size="108" :stroke-width="0.8" aria-hidden="true" />
-          </section>
-          <div class="section-intro">
-            <h2>值得关注的官方来源</h2>
-            <span class="outline-badge">来源导航 · 非实时新闻</span>
-          </div>
-          <div class="sources-grid">
-            <a
-              v-for="s in sourceLinks"
-              :key="s.name"
-              class="panel source-card"
-              :href="s.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              ><div>
-                <span class="source-logo" :style="{ color: s.color, background: `${s.color}15` }">{{
-                  s.initials
-                }}</span
-                ><ArrowUpRight :size="18" />
-              </div>
-              <span class="small muted">{{ s.category }}</span>
-              <h3>{{ s.name }}</h3>
-              <p>{{ s.description }}</p>
-              <span class="text-button">访问官方来源 <ExternalLink :size="13" /></span
-            ></a>
-          </div>
-          <div class="insight-strip">
-            <CircleHelp :size="20" />
-            <p>
-              当前提供官方来源入口。自动抓取、发布日期核验、更新提醒和价格历史尚未实现，因此这里不展示未经核验的“最新模型”消息。
-            </p>
-          </div>
+        <NewsRadarView v-else-if="page === 'radar'" :timezone="snapshot.timezone" />
+        <McpInventoryView
+          v-else-if="page === 'mcp'"
+          :mode="snapshot.mode"
+          :timezone="snapshot.timezone"
+        />
+        <template v-else-if="page === 'portfolio'">
+          <NotebookToolbar :key="notebook.scope.value" :notebook="notebook" />
+          <PortfolioView :key="notebook.scope.value" :notebook="notebook" :snapshot="snapshot" />
         </template>
 
         <template v-else-if="page === 'data'">
