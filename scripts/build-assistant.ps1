@@ -38,6 +38,7 @@ try{
     & $jpackage --type exe --app-image $image --name 'AI Footprint Assistant' --app-version $version --vendor 'AI Footprint' --win-per-user-install --win-menu --win-menu-group 'AI Footprint' --win-shortcut --win-dir-chooser --win-upgrade-uuid 'c88fc3a2-072f-4f7a-93f1-42257cb72ef9' --license-file (Join-Path $projectRoot 'LICENSE') --temp (Join-Path $OutputDirectory 'installer-temp') --dest $OutputDirectory
     if($LASTEXITCODE -ne 0){throw 'Windows installer packaging failed'}
 }finally{$env:PATH=$originalPath}
+Rename-Item -LiteralPath (Join-Path $OutputDirectory "AI Footprint Assistant-$version.exe") -NewName "AI-Footprint-Assistant-$version-windows-x64-setup.exe"
 Compress-Archive -Path $image -DestinationPath (Join-Path $OutputDirectory "AI-Footprint-Assistant-$version-windows-x64-portable.zip")
 $artifacts=Get-ChildItem -LiteralPath $OutputDirectory -File | Where-Object Extension -in '.exe','.zip'
 $artifacts | ForEach-Object { "$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)" } | Set-Content -LiteralPath (Join-Path $OutputDirectory 'SHA256SUMS.txt') -Encoding ascii
